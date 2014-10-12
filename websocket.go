@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"time"
 
-	"ajph/bitstamp/github.com/gorilla/websocket"
+	"github.com/gorilla/websocket"
 )
 
 var _socketurl string = "wss://ws.pusherapp.com/app/de504dc5763aeef9ff52?protocol=7&client=js&version=2.1.6&flash=false"
