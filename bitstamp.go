@@ -17,42 +17,74 @@ import (
 
 var _cliId, _key, _secret string
 
-var _url string = "https://www.bitstamp.net/api"
+var _url string = "https://www.bitstamp.net/api/v2"
 
 type AccountBalanceResult struct {
 	UsdBalance   float64 `json:"usd_balance,string"`
 	BtcBalance   float64 `json:"btc_balance,string"`
+	EurBalance   float64 `json:"eur_balance,string"`
+	XrpBalance   float64 `json:"xrp_balance,string"`
 	UsdReserved  float64 `json:"usd_reserved,string"`
 	BtcReserved  float64 `json:"btc_reserved,string"`
+	EurReserved  float64 `json:"eur_reserved,string"`
+	XrpReserved  float64 `json:"xrp_reserved,string"`
 	UsdAvailable float64 `json:"usd_available,string"`
 	BtcAvailable float64 `json:"btc_available,string"`
-	Fee          float64 `json:"fee,string"`
+	EurAvailable float64 `json:"eur_available,string"`
+	XrpAvailable float64 `json:"xrp_available,string"`
+	BtcUsdFee    float64 `json:"btcusd_fee,string"`
+	BtcEurFee    float64 `json:"btceur_fee,string"`
+	EurUsdFee    float64 `json:"eurusd_fee,string"`
+	XrpUsdFee    float64 `json:"xrpusd_fee,string"`
+	XrpEurFee    float64 `json:"xrpeur_fee,string"`
+	XrpBtcFee    float64 `json:"xrpbtc_fee,string"`
+}
+
+type TickerResult struct {
+	Last         float64 `json:"last,string"`
+	High	     float64 `json:"high,string"`
+	Low          float64 `json:"low,string"`
+	Vwap         float64 `json:"vwap,string"`
+	Volume	     float64 `json:"volume,string"`
+	Bid          float64 `json:"bid,string"`
+	Ask          float64 `json:"ask,string"`
+	Timestamp    string  `json:"timestamp"`
+	Open         float64 `json:"open,string"`
 }
 
 type BuyLimitOrderResult struct {
-	Id       int64   `json:"id,int64"`
+	Id       int64   `json:"id,string"`
 	DateTime string  `json:"datetime"`
-	Type     int     `json:"type,int"`
+	Type     int     `json:"type,string"`
 	Price    float64 `json:"price,string"`
 	Amount   float64 `json:"amount,string"`
 }
 
 type SellLimitOrderResult struct {
-	Id       int64   `json:"id,int64"`
+	Id       int64   `json:"id,string"`
 	DateTime string  `json:"datetime"`
-	Type     int     `json:"type,int"`
+	Type     int     `json:"type,string"`
 	Price    float64 `json:"price,string"`
 	Amount   float64 `json:"amount,string"`
 }
 
 type UserTransactionResult struct {
-	Id       int64   `json:"id,int64"`
+	Id       int64   `json:"id,string"`
 	DateTime string  `json:"datetime"`
-	Type     int     `json:"type,int"`
+	Type     int     `json:"type,string"`
 	Usd      float64 `json:"usd,string"`
 	Btc      float64 `json:"btc,string"`
 	Fee      float64 `json:"fee,string"`
-	OrderId  int64   `json:"order_id,int64"`
+	OrderId  int64   `json:"order_id,string"`
+}
+
+type OpenOrder struct {
+	Id       int64   `json:"id,string"`
+	DateTime string  `json:"datetime"`
+	Type     int     `json:"type,string"`
+	Price    float64 `json:"price,string"`
+	Amount   float64 `json:"amount,string"`
+	CurrencyPair string `json:"currency_pair"`
 }
 
 type OrderTransactionsResult struct {
@@ -91,6 +123,7 @@ func privateQuery(path string, values url.Values, v interface{}) error {
 	reqBody := strings.NewReader(values.Encode())
 
 	// create the request
+	//log.Println(endpoint.String(), values)
 	req, err := http.NewRequest("POST", endpoint.String(), reqBody)
 	if err != nil {
 		return err
@@ -126,6 +159,7 @@ func privateQuery(path string, values url.Values, v interface{}) error {
 	}
 
 	//parse the JSON response into the response object
+	//log.Println(string(body))
 	return json.Unmarshal(body, v)
 }
 
@@ -138,30 +172,67 @@ func AccountBalance() (*AccountBalanceResult, error) {
 	return balance, nil
 }
 
-func BuyLimitOrder(amount float64, price float64) (*BuyLimitOrderResult, error) {
+func Ticker(pair string) (*TickerResult, error) {
+	ticker := &TickerResult{}
+	err := privateQuery("/ticker/" + pair + "/", url.Values{}, ticker)
+	if err != nil {
+		return nil, err
+	}
+	return ticker, nil
+}
+
+func BuyLimitOrder(pair string, amount float64, price float64, amountPrecision, pricePrecision int) (*BuyLimitOrderResult, error) {
 	// set params
 	var v = url.Values{}
-	v.Add("amount", strconv.FormatFloat(amount, 'f', 8, 64))
-	v.Add("price", strconv.FormatFloat(price, 'f', 2, 64))
+	v.Add("amount", strconv.FormatFloat(amount, 'f', amountPrecision, 64))
+	v.Add("price", strconv.FormatFloat(price, 'f', pricePrecision, 64))
 
 	// make request
 	result := &BuyLimitOrderResult{}
-	err := privateQuery("/buy/", v, result)
+	err := privateQuery("/buy/" + pair + "/", v, result)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func SellLimitOrder(amount float64, price float64) (*SellLimitOrderResult, error) {
+func BuyMarketOrder(pair string, amount float64) (*BuyLimitOrderResult, error) {
 	// set params
 	var v = url.Values{}
 	v.Add("amount", strconv.FormatFloat(amount, 'f', 8, 64))
-	v.Add("price", strconv.FormatFloat(price, 'f', 2, 64))
+
+	// make request
+	result := &BuyLimitOrderResult{}
+	err := privateQuery("/buy/market/" + pair + "/", v, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func SellLimitOrder(pair string, amount float64, price float64, amountPrecision, pricePrecision int) (*SellLimitOrderResult, error) {
+	// set params
+	var v = url.Values{}
+	v.Add("amount", strconv.FormatFloat(amount, 'f', amountPrecision, 64))
+	v.Add("price", strconv.FormatFloat(price, 'f', pricePrecision, 64))
 
 	// make request
 	result := &SellLimitOrderResult{}
-	err := privateQuery("/sell/", v, result)
+	err := privateQuery("/sell/" + pair + "/", v, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func SellMarketOrder(pair string, amount float64) (*SellLimitOrderResult, error) {
+	// set params
+	var v = url.Values{}
+	v.Add("amount", strconv.FormatFloat(amount, 'f', 8, 64))
+
+	// make request
+	result := &SellLimitOrderResult{}
+	err := privateQuery("/sell/market/" + pair + "/", v, result)
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +246,16 @@ func CancelOrder(orderId int64) {
 
 	// make request
 	privateQuery("/cancel_order/", v, nil)
+}
+
+func OpenOrders() (*[]OpenOrder, error) {
+	// make request
+	result := &[]OpenOrder{}
+	err := privateQuery("/open_orders/all/", url.Values{}, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func UserTransactions(offset int64, limit int64, sort string) ([]UserTransactionResult, error) {
