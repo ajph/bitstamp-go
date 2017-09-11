@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -25,16 +24,19 @@ type AccountBalanceResult struct {
 	EurBalance   float64 `json:"eur_balance,string"`
 	XrpBalance   float64 `json:"xrp_balance,string"`
 	LtcBalance   float64 `json:"ltc_balance,string"`
+	EthBalance   float64 `json:"eth_balance,string"`
 	UsdReserved  float64 `json:"usd_reserved,string"`
 	BtcReserved  float64 `json:"btc_reserved,string"`
 	EurReserved  float64 `json:"eur_reserved,string"`
 	XrpReserved  float64 `json:"xrp_reserved,string"`
 	LtcReserved  float64 `json:"ltc_reserved,string"`
+	EthReserved  float64 `json:"eth_reserved,string"`
 	UsdAvailable float64 `json:"usd_available,string"`
 	BtcAvailable float64 `json:"btc_available,string"`
 	EurAvailable float64 `json:"eur_available,string"`
 	XrpAvailable float64 `json:"xrp_available,string"`
 	LtcAvailable float64 `json:"ltc_available,string"`
+	EthAvailable float64 `json:"eth_available,string"`
 	BtcUsdFee    float64 `json:"btcusd_fee,string"`
 	BtcEurFee    float64 `json:"btceur_fee,string"`
 	EurUsdFee    float64 `json:"eurusd_fee,string"`
@@ -44,18 +46,21 @@ type AccountBalanceResult struct {
 	LtcUsdFee    float64 `json:"ltcusd_fee,string"`
 	LtcEurFee    float64 `json:"ltceur_fee,string"`
 	LtcBtcFee    float64 `json:"ltcbtc_fee,string"`
+	EthUsdFee    float64 `json:"ethusd_fee,string"`
+	EthEurFee    float64 `json:"etheur_fee,string"`
+	EthBtcFee    float64 `json:"ethbtc_fee,string"`
 }
 
 type TickerResult struct {
-	Last         float64 `json:"last,string"`
-	High	     float64 `json:"high,string"`
-	Low          float64 `json:"low,string"`
-	Vwap         float64 `json:"vwap,string"`
-	Volume	     float64 `json:"volume,string"`
-	Bid          float64 `json:"bid,string"`
-	Ask          float64 `json:"ask,string"`
-	Timestamp    string  `json:"timestamp"`
-	Open         float64 `json:"open,string"`
+	Last      float64 `json:"last,string"`
+	High      float64 `json:"high,string"`
+	Low       float64 `json:"low,string"`
+	Vwap      float64 `json:"vwap,string"`
+	Volume    float64 `json:"volume,string"`
+	Bid       float64 `json:"bid,string"`
+	Ask       float64 `json:"ask,string"`
+	Timestamp string  `json:"timestamp"`
+	Open      float64 `json:"open,string"`
 }
 
 type BuyOrderResult struct {
@@ -75,12 +80,12 @@ type SellOrderResult struct {
 }
 
 type OpenOrder struct {
-	Id       int64   `json:"id,string"`
-	DateTime string  `json:"datetime"`
-	Type     int     `json:"type,string"`
-	Price    float64 `json:"price,string"`
-	Amount   float64 `json:"amount,string"`
-	CurrencyPair string `json:"currency_pair"`
+	Id           int64   `json:"id,string"`
+	DateTime     string  `json:"datetime"`
+	Type         int     `json:"type,string"`
+	Price        float64 `json:"price,string"`
+	Amount       float64 `json:"amount,string"`
+	CurrencyPair string  `json:"currency_pair"`
 }
 
 func SetAuth(clientId, key, secret string) {
@@ -163,7 +168,7 @@ func AccountBalance() (*AccountBalanceResult, error) {
 
 func Ticker(pair string) (*TickerResult, error) {
 	ticker := &TickerResult{}
-	err := privateQuery("/ticker/" + pair + "/", url.Values{}, ticker)
+	err := privateQuery("/ticker/"+pair+"/", url.Values{}, ticker)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +183,7 @@ func BuyLimitOrder(pair string, amount float64, price float64, amountPrecision, 
 
 	// make request
 	result := &BuyOrderResult{}
-	err := privateQuery("/buy/" + pair + "/", v, result)
+	err := privateQuery("/buy/"+pair+"/", v, result)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +197,7 @@ func BuyMarketOrder(pair string, amount float64) (*BuyOrderResult, error) {
 
 	// make request
 	result := &BuyOrderResult{}
-	err := privateQuery("/buy/market/" + pair + "/", v, result)
+	err := privateQuery("/buy/market/"+pair+"/", v, result)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +212,7 @@ func SellLimitOrder(pair string, amount float64, price float64, amountPrecision,
 
 	// make request
 	result := &SellOrderResult{}
-	err := privateQuery("/sell/" + pair + "/", v, result)
+	err := privateQuery("/sell/"+pair+"/", v, result)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +226,7 @@ func SellMarketOrder(pair string, amount float64) (*SellOrderResult, error) {
 
 	// make request
 	result := &SellOrderResult{}
-	err := privateQuery("/sell/market/" + pair + "/", v, result)
+	err := privateQuery("/sell/market/"+pair+"/", v, result)
 	if err != nil {
 		return nil, err
 	}
