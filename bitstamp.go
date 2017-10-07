@@ -18,6 +18,18 @@ var _cliId, _key, _secret string
 
 var _url string = "https://www.bitstamp.net/api/v2"
 
+const bitstampTimeLayout = "2006-01-02 15:04:05"
+
+type Time time.Time
+
+func (t *Time) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), "\"")
+
+	_t, err := time.Parse(bitstampTimeLayout, s)
+	*t = Time(_t)
+	return err
+}
+
 type AccountBalanceResult struct {
 	UsdBalance   float64 `json:"usd_balance,string"`
 	BtcBalance   float64 `json:"btc_balance,string"`
@@ -65,7 +77,7 @@ type TickerResult struct {
 
 type BuyOrderResult struct {
 	Id       int64   `json:"id,string"`
-	DateTime string  `json:"datetime"`
+	DateTime Time    `json:"datetime"`
 	Type     int     `json:"type,string"`
 	Price    float64 `json:"price,string"`
 	Amount   float64 `json:"amount,string"`
@@ -73,7 +85,7 @@ type BuyOrderResult struct {
 
 type SellOrderResult struct {
 	Id       int64   `json:"id,string"`
-	DateTime string  `json:"datetime"`
+	DateTime Time    `json:"datetime"`
 	Type     int     `json:"type,string"`
 	Price    float64 `json:"price,string"`
 	Amount   float64 `json:"amount,string"`
@@ -81,11 +93,20 @@ type SellOrderResult struct {
 
 type OpenOrder struct {
 	Id           int64   `json:"id,string"`
-	DateTime     string  `json:"datetime"`
+	DateTime     Time    `json:"datetime"`
 	Type         int     `json:"type,string"`
 	Price        float64 `json:"price,string"`
 	Amount       float64 `json:"amount,string"`
 	CurrencyPair string  `json:"currency_pair"`
+}
+
+type Float float64
+
+func (f *Float) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), "\"")
+	_f, err := strconv.ParseFloat(s, 64)
+	*f = Float(_f)
+	return err
 }
 
 func SetAuth(clientId, key, secret string) {
@@ -153,7 +174,7 @@ func privateQuery(path string, values url.Values, v interface{}) error {
 	}
 
 	//parse the JSON response into the response object
-	//log.Println(string(body))
+	// log.Println(string(body))
 	return json.Unmarshal(body, v)
 }
 
@@ -250,4 +271,33 @@ func OpenOrders() (*[]OpenOrder, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+func AccountTransactions() ([]AccountTransactionResult, error) {
+	internalTs := make([]accountTransactionsResult, 0)
+	err := privateQuery("/user_transactions/", url.Values{}, &internalTs)
+	if err != nil {
+		return nil, err
+	}
+
+	ts := make([]AccountTransactionResult, len(internalTs))
+	for i, t := range internalTs {
+		ts[i] = AccountTransactionResult{
+			DateTime: time.Time(t.DateTime),
+			Id:       t.Id,
+			Type:     t.Type,
+			Usd:      float64(t.Usd),
+			Eur:      float64(t.Eur),
+			Btc:      float64(t.Btc),
+			Xrp:      float64(t.Xrp),
+			Ltc:      float64(t.Ltc),
+			Eth:      float64(t.Eth),
+			BtcUsd:   float64(t.BtcUsd),
+			UsdBtc:   float64(t.UsdBtc),
+			Fee:      float64(t.Fee),
+			OrderId:  t.OrderId,
+		}
+	}
+
+	return ts, nil
 }
