@@ -25,18 +25,21 @@ type AccountBalanceResult struct {
 	XrpBalance   float64 `json:"xrp_balance,string"`
 	LtcBalance   float64 `json:"ltc_balance,string"`
 	EthBalance   float64 `json:"eth_balance,string"`
+	BchBalance   float64 `json:"bch_balance,string"`
 	UsdReserved  float64 `json:"usd_reserved,string"`
 	BtcReserved  float64 `json:"btc_reserved,string"`
 	EurReserved  float64 `json:"eur_reserved,string"`
 	XrpReserved  float64 `json:"xrp_reserved,string"`
 	LtcReserved  float64 `json:"ltc_reserved,string"`
 	EthReserved  float64 `json:"eth_reserved,string"`
+	BchReserved  float64 `json:"bch_reserved,string"`
 	UsdAvailable float64 `json:"usd_available,string"`
 	BtcAvailable float64 `json:"btc_available,string"`
 	EurAvailable float64 `json:"eur_available,string"`
 	XrpAvailable float64 `json:"xrp_available,string"`
 	LtcAvailable float64 `json:"ltc_available,string"`
 	EthAvailable float64 `json:"eth_available,string"`
+	BchAvailable float64 `json:"bch_available,string"`
 	BtcUsdFee    float64 `json:"btcusd_fee,string"`
 	BtcEurFee    float64 `json:"btceur_fee,string"`
 	EurUsdFee    float64 `json:"eurusd_fee,string"`
@@ -49,6 +52,9 @@ type AccountBalanceResult struct {
 	EthUsdFee    float64 `json:"ethusd_fee,string"`
 	EthEurFee    float64 `json:"etheur_fee,string"`
 	EthBtcFee    float64 `json:"ethbtc_fee,string"`
+	BchUsdFee    float64 `json:"bchusd_fee,string"`
+	BchEurFee    float64 `json:"bcheur_fee,string"`
+	BchBtcFee    float64 `json:"bchbtc_fee,string"`
 }
 
 type TickerResult struct {
