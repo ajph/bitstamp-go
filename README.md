@@ -53,7 +53,7 @@ func main() {
 	fmt.Println("\nAvailable Balances:")
 	fmt.Printf("USD %f\n", balance.UsdAvailable)
 	fmt.Printf("BTC %f\n", balance.BtcAvailable)
-	fmt.Printf("FEE %f\n\n", balance.Fee)
+	fmt.Printf("FEE %f\n\n", balance.BtcUsdFee)
 
 	// attempt to place a buy order
 	order, err := bitstamp.BuyLimitOrder(0.5, 600.00)
