@@ -45,15 +45,15 @@ func main() {
 	bitstamp.SetAuth("123456", "key", "secret")
 
 	// get balance
-	_, err := bitstamp.AccountBalance()
+	balances, err := bitstamp.AccountBalance()
 	if err != nil {
 		fmt.Printf("Can't get balance using bitstamp API: %s\n", err)
 		return
 	}
 	fmt.Println("\nAvailable Balances:")
-	fmt.Printf("USD %f\n", balance.UsdAvailable)
-	fmt.Printf("BTC %f\n", balance.BtcAvailable)
-	fmt.Printf("FEE %f\n\n", balance.BtcUsdFee)
+	fmt.Printf("USD %f\n", balances.UsdAvailable)
+	fmt.Printf("BTC %f\n", balances.BtcAvailable)
+	fmt.Printf("FEE %f\n\n", balances.BtcUsdFee)
 
 	// attempt to place a buy order
 	order, err := bitstamp.BuyLimitOrder(0.5, 600.00)
