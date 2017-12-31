@@ -52,7 +52,7 @@ func main() {
 	}
 	fmt.Println("\nAvailable Balances:")
 	fmt.Printf("USD %f\n", balance.UsdAvailable)
-	fmt.Printf("BTC %f\n", balance.BtcAvailable)	
+	fmt.Printf("BTC %f\n", balance.BtcAvailable)
 	fmt.Printf("FEE %f\n\n", balance.Fee)
 
 	// attempt to place a buy order
@@ -61,9 +61,9 @@ func main() {
 		log.Printf("Error placing buy order: %s", err)
 		return
 	}
-	
-	// check order				
-	var orderRes *bitstamp.OrderTransactionsResult									
+
+	// check order
+	var orderRes *bitstamp.OrderTransactionsResult					
 	orderRes, err = bitstamp.OrderTransactions(order.Id)
 	if err != nil {
 		log.Printf("Error checking status of buy order #%d %s. Retrying...", order.Id, err)
@@ -76,7 +76,7 @@ func main() {
 	}
 
 	// websocket read loop
-	for {	
+	for {
 		// connect
 		log.Println("Dialing...")
 		var err error
@@ -105,7 +105,7 @@ L:
 
 			}
 		}
-	}	
+	}
 
 }
 ```
