@@ -19,9 +19,9 @@ var _cliId, _key, _secret string
 var _url string = "https://www.bitstamp.net/api/v2"
 
 type ErrorResult struct {
-	Status string `json:string`
-	Reason string `json:string`                                                                                                                                                             
-	Code   string `json:string`                                                                                                                                                             
+	Status string `json:"status,string"`
+	Reason string `json:"reason,string"`                                                                                                                                                             
+	Code   string `json:"code,string"`                                                                                                                                                             
 }
 
 type AccountBalanceResult struct {
