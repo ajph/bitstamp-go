@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -20,8 +21,8 @@ var _url string = "https://www.bitstamp.net/api/v2"
 
 type ErrorResult struct {
 	Status string `json:"status,string"`
-	Reason string `json:"reason,string"`                                                                                                                                                             
-	Code   string `json:"code,string"`                                                                                                                                                             
+	Reason string `json:"reason,string"`
+	Code   string `json:"code,string"`
 }
 
 type AccountBalanceResult struct {
@@ -89,6 +90,17 @@ type SellOrderResult struct {
 	Type     int     `json:"type,string"`
 	Price    float64 `json:"price,string"`
 	Amount   float64 `json:"amount,string"`
+}
+
+type OrderBookResult struct {
+	Timestamp string          `json:"timestamp"`
+	Bids      []OrderBookItem `json:"bids"`
+	Asks      []OrderBookItem `json:"asks"`
+}
+
+type OrderBookItem struct {
+	Price  float64
+	Amount float64
 }
 
 type OpenOrder struct {
@@ -166,14 +178,36 @@ func privateQuery(path string, values url.Values, v interface{}) error {
 
 	// Check for status == error
 	err_result := ErrorResult{}
-	json.Unmarshal(body,&err_result)
+	json.Unmarshal(body, &err_result)
 	if err_result.Status == "error" {
-		return fmt.Errorf("%#v",err_result)
+		return fmt.Errorf("%#v", err_result)
 	}
 
 	//parse the JSON response into the response object
 	//log.Println(string(body))
 	return json.Unmarshal(body, v)
+}
+
+// UnmarshalJSON takes a json array and converts it into an OrderBookItem.
+func (o *OrderBookItem) UnmarshalJSON(data []byte) error {
+	tmp_struct := struct {
+		p string
+		v string
+	}{}
+
+	err := json.Unmarshal(data, &[]interface{}{&tmp_struct.p, &tmp_struct.v})
+	if err != nil {
+		return err
+	}
+
+	if o.Price, err = strconv.ParseFloat(tmp_struct.p, 64); err != nil {
+		return err
+	}
+
+	if o.Amount, err = strconv.ParseFloat(tmp_struct.v, 64); err != nil {
+		return err
+	}
+	return nil
 }
 
 func AccountBalance() (*AccountBalanceResult, error) {
@@ -183,6 +217,16 @@ func AccountBalance() (*AccountBalanceResult, error) {
 		return nil, err
 	}
 	return balance, nil
+}
+
+func OrderBook(pair string) (*OrderBookResult, error) {
+	orderBook := &OrderBookResult{}
+	err := privateQuery("/order_book/"+pair+"/", url.Values{}, orderBook)
+	if err != nil {
+		log.Printf("Error: %v", err)
+		return nil, err
+	}
+	return orderBook, nil
 }
 
 func Ticker(pair string) (*TickerResult, error) {
