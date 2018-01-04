@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -223,7 +222,6 @@ func OrderBook(pair string) (*OrderBookResult, error) {
 	orderBook := &OrderBookResult{}
 	err := privateQuery("/order_book/"+pair+"/", url.Values{}, orderBook)
 	if err != nil {
-		log.Printf("Error: %v", err)
 		return nil, err
 	}
 	return orderBook, nil
