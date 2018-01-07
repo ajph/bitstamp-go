@@ -45,15 +45,15 @@ func main() {
 	bitstamp.SetAuth("123456", "key", "secret")
 
 	// get balance
-	_, err := bitstamp.AccountBalance()
+	balances, err := bitstamp.AccountBalance()
 	if err != nil {
 		fmt.Printf("Can't get balance using bitstamp API: %s\n", err)
 		return
 	}
 	fmt.Println("\nAvailable Balances:")
-	fmt.Printf("USD %f\n", balance.UsdAvailable)
-	fmt.Printf("BTC %f\n", balance.BtcAvailable)	
-	fmt.Printf("FEE %f\n\n", balance.Fee)
+	fmt.Printf("USD %f\n", balances.UsdAvailable)
+	fmt.Printf("BTC %f\n", balances.BtcAvailable)
+	fmt.Printf("FEE %f\n\n", balances.BtcUsdFee)
 
 	// attempt to place a buy order
 	order, err := bitstamp.BuyLimitOrder(0.5, 600.00)
@@ -61,9 +61,9 @@ func main() {
 		log.Printf("Error placing buy order: %s", err)
 		return
 	}
-	
-	// check order				
-	var orderRes *bitstamp.OrderTransactionsResult									
+
+	// check order
+	var orderRes *bitstamp.OrderTransactionsResult					
 	orderRes, err = bitstamp.OrderTransactions(order.Id)
 	if err != nil {
 		log.Printf("Error checking status of buy order #%d %s. Retrying...", order.Id, err)
@@ -76,7 +76,7 @@ func main() {
 	}
 
 	// websocket read loop
-	for {	
+	for {
 		// connect
 		log.Println("Dialing...")
 		var err error
@@ -105,7 +105,7 @@ L:
 
 			}
 		}
-	}	
+	}
 
 }
 ```
