@@ -18,17 +18,6 @@ var _cliId, _key, _secret string
 
 var _url string = "https://www.bitstamp.net/api/v2"
 
-const bitstampTimeLayout = "2006-01-02 15:04:05"
-
-type Time time.Time
-
-func (t *Time) UnmarshalJSON(b []byte) error {
-	s := strings.Trim(string(b), "\"")
-	_t, err := time.Parse(bitstampTimeLayout, s)
-	*t = Time(_t)
-	return err
-}
-
 type ErrorResult struct {
 	Status string `json:"status,string"`
 	Reason string `json:"reason,string"`
@@ -88,7 +77,7 @@ type TickerResult struct {
 
 type BuyOrderResult struct {
 	Id       int64   `json:"id,string"`
-	DateTime Time    `json:"datetime"`
+	DateTime string  `json:"datetime"`
 	Type     int     `json:"type,string"`
 	Price    float64 `json:"price,string"`
 	Amount   float64 `json:"amount,string"`
@@ -96,7 +85,7 @@ type BuyOrderResult struct {
 
 type SellOrderResult struct {
 	Id       int64   `json:"id,string"`
-	DateTime Time    `json:"datetime"`
+	DateTime string  `json:"datetime"`
 	Type     int     `json:"type,string"`
 	Price    float64 `json:"price,string"`
 	Amount   float64 `json:"amount,string"`
@@ -115,20 +104,11 @@ type OrderBookItem struct {
 
 type OpenOrder struct {
 	Id           int64   `json:"id,string"`
-	DateTime     Time    `json:"datetime"`
+	DateTime     string  `json:"datetime"`
 	Type         int     `json:"type,string"`
 	Price        float64 `json:"price,string"`
 	Amount       float64 `json:"amount,string"`
 	CurrencyPair string  `json:"currency_pair"`
-}
-
-type Float float64
-
-func (f *Float) UnmarshalJSON(b []byte) error {
-	s := strings.Trim(string(b), "\"")
-	_f, err := strconv.ParseFloat(s, 64)
-	*f = Float(_f)
-	return err
 }
 
 func SetAuth(clientId, key, secret string) {
@@ -334,7 +314,7 @@ func OpenOrders() (*[]OpenOrder, error) {
 }
 
 func AccountTransactions() ([]AccountTransactionResult, error) {
-	internalTs := make([]accountTransactionsResult, 0)
+	internalTs := make([]accountTransactionResult, 0)
 	err := privateQuery("/user_transactions/", url.Values{}, &internalTs)
 	if err != nil {
 		return nil, err
@@ -343,7 +323,7 @@ func AccountTransactions() ([]AccountTransactionResult, error) {
 	ts := make([]AccountTransactionResult, len(internalTs))
 	for i, t := range internalTs {
 		ts[i] = AccountTransactionResult{
-			DateTime: time.Time(t.DateTime),
+			DateTime: t.DateTime,
 			Id:       t.Id,
 			Type:     t.Type,
 			Usd:      float64(t.Usd),

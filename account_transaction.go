@@ -3,7 +3,6 @@ package bitstamp
 import (
 	"strconv"
 	"strings"
-	"time"
 )
 
 const (
@@ -37,8 +36,21 @@ func (t UserTransactionType) String() string {
 	}
 }
 
-type accountTransactionsResult struct {
-	DateTime Time                `json:"datetime"`
+type Float float64
+
+func (f *Float) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), "\"")
+	_f, err := strconv.ParseFloat(s, 64)
+	*f = Float(_f)
+	return err
+}
+
+// accountTransactionResult is used internally to ease the process of unmarshalling.
+// For some reason, for the transaction endpoint, Bitstamp is sends numbers
+// encoded as both strings and floats, intermingled. This means that we cannot
+// use the `json:"name,string"` automagic conversion here.
+type accountTransactionResult struct {
+	DateTime string              `json:"datetime"`
 	Id       int64               `json:"id"`
 	Type     UserTransactionType `json:"type"`
 	Usd      Float               `json:"usd"`
@@ -54,7 +66,7 @@ type accountTransactionsResult struct {
 }
 
 type AccountTransactionResult struct {
-	DateTime time.Time           `json:"datetime"`
+	DateTime string              `json:"datetime"`
 	Id       int64               `json:"id"`
 	Type     UserTransactionType `json:"type"`
 	Usd      float64             `json:"usd"`
