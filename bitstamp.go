@@ -347,3 +347,35 @@ func CancelAllOrders() (*bool, error) {
 	}
 	return result, nil
 }
+
+func WithdrawLitecoin(address string, amount float64) (interface{}, error) {
+	// make request
+
+	log.Printf("WithdrawLitecoin() is currently untested!")
+
+	var result map[string]interface{}
+
+	v := url.Values{}
+	v.Add("amount", strconv.FormatFloat(amount, 'f', 8, 64))
+	v.Add("address", address)
+
+	err := privateQuery("/ltc_withdrawal/", v, &result)
+
+	if status, ok := result["status"]; ok {
+		statusStr, ok := status.(string)
+		if !ok {
+			err = fmt.Errorf("Failed to deal with result '%+v'", result)
+			return nil, err
+		}
+
+		if statusStr == "error" {
+			err = fmt.Errorf("Got error: %+v", result)
+			return nil, err
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
