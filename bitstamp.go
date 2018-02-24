@@ -185,14 +185,10 @@ func privateQuery(path string, values url.Values, v interface{}) error {
 	if len(body) == 0 {
 		return fmt.Errorf("Response body 0 length")
 	}
-	e := make(map[string]interface{})
-	err = json.Unmarshal(body, &e)
+
+	err = json.Unmarshal(body, &v)
 	if err != nil {
 		return err
-	}
-
-	if bsEr, ok := e["error"]; ok {
-		return fmt.Errorf("%v", bsEr)
 	}
 
 	// Check for status == error
