@@ -17,7 +17,10 @@ import (
 
 var _cliId, _key, _secret string
 
-var _url string = "https://www.bitstamp.net/api/v2"
+var _url_v2 string = "https://www.bitstamp.net/api/v2"
+var _url_v1 string = "https://www.bitstamp.net/api"
+
+var httpClient = http.DefaultClient
 
 type ErrorResult struct {
 	Status string `json:"status"`
@@ -30,6 +33,10 @@ type AccountBalanceResult struct {
 	Reserved  map[string]float64
 	Available map[string]float64
 	Fee       map[string]float64
+}
+
+func SetHTTPClient(client *http.Client) {
+	httpClient = client
 }
 
 func NewAccountBalanceResult() *AccountBalanceResult {
@@ -133,13 +140,30 @@ func SetAuth(clientId, key, secret string) {
 	_secret = secret
 }
 
-// privateQuery submits an http.Request with key, sig & nonce
+// privateQuery submits an http.Request with key, sig & nonce using the v2 api
 func privateQuery(path string, values url.Values, v interface{}) error {
 	// parse the bitstamp URL
-	endpoint, err := url.Parse(_url)
+	endpoint, err := url.Parse(_url_v2)
 	if err != nil {
 		return err
 	}
+
+	return privateQueryGeneric(endpoint, path, values, v)
+}
+
+// privateQuery submits an http.Request with key, sig & nonce using the v1 api
+func privateQueryOld(path string, values url.Values, v interface{}) error {
+	// parse the bitstamp URL
+	endpoint, err := url.Parse(_url_v1)
+	if err != nil {
+		return err
+	}
+
+	return privateQueryGeneric(endpoint, path, values, v)
+}
+
+func privateQueryGeneric(endpoint *url.URL, path string, values url.Values,
+	v interface{}) error {
 
 	// set the endpoint for this request
 	endpoint.Path += path
@@ -164,7 +188,7 @@ func privateQuery(path string, values url.Values, v interface{}) error {
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	// submit the http request
-	r, err := http.DefaultClient.Do(req)
+	r, err := httpClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -186,17 +210,12 @@ func privateQuery(path string, values url.Values, v interface{}) error {
 		return fmt.Errorf("Response body 0 length")
 	}
 
-	err = json.Unmarshal(body, &v)
-	if err != nil {
-		return err
-	}
-
 	// Check for status == error
-	errResult := ErrorResult{}
+	var errResult map[string]interface{}
 	err = json.Unmarshal(body, &errResult)
 	if err == nil {
-		if errResult.Status == "error" {
-			return fmt.Errorf("%#v", errResult)
+		if status, ok := errResult["status"]; ok && status == "error" {
+			return fmt.Errorf("%+v", errResult)
 		}
 	}
 
@@ -331,15 +350,13 @@ func OpenOrders() (*[]OpenOrder, error) {
 	return result, nil
 }
 
-func CancelAllOrders() (*bool, error) {
+func CancelAllOrders() (bool, error) {
 	// make request
 
-	log.Printf("CancelAllOrders() is currently untested!")
-
-	var result *bool
-	err := privateQuery("/cancel_all_orders/", url.Values{}, result)
+	var result bool
+	err := privateQueryOld("/cancel_all_orders/", url.Values{}, &result)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 	return result, nil
 }
