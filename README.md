@@ -12,12 +12,14 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/ajph/bitstamp-go"
 )
 
-func handleEvent(e *bitstamp.Event) {
+const WS_TIMEOUT = 10 * time.Second
+
+func handleEvent(e *bitstamp.Event, Ws *bitstamp.WebSocket) {
 	switch e.Event {
 	// pusher stuff
 	case "pusher:connection_established":
@@ -56,25 +58,15 @@ func main() {
 	fmt.Printf("FEE %f\n\n", balances.BtcUsdFee)
 
 	// attempt to place a buy order
-	order, err := bitstamp.BuyLimitOrder(0.5, 600.00)
+	// BuyLimitOrder(pair string, amount float64, price float64, amountPrecision, pricePrecision int)
+	order, err := bitstamp.BuyLimitOrder("btcusd", 0.5, 600.00, 16, 16)
 	if err != nil {
 		log.Printf("Error placing buy order: %s", err)
 		return
 	}
+	fmt.Printf("Place oder %d", order.Id)
 
-	// check order
-	var orderRes *bitstamp.OrderTransactionsResult					
-	orderRes, err = bitstamp.OrderTransactions(order.Id)
-	if err != nil {
-		log.Printf("Error checking status of buy order #%d %s. Retrying...", order.Id, err)
-		return
-	}
-
-	if orderRes.TotalBtcAmount != 0.5 {
-		log.Printf("BUY order #%d unsuccessful", order.Id)
-		return
-	}
-
+	var Ws *bitstamp.WebSocket
 	// websocket read loop
 	for {
 		// connect
@@ -89,18 +81,18 @@ func main() {
 		Ws.Subscribe("live_trades")
 
 		// read data
-L:
+	L:
 		for {
 			select {
 			case ev := <-Ws.Stream:
-				handleEvent(ev)
+				handleEvent(ev, Ws)
 
 			case err := <-Ws.Errors:
 				log.Printf("Socket error: %s, reconnecting...", err)
 				Ws.Close()
 				break L
 
-			case <- time.After(10 * time.Second):
+			case <-time.After(10 * time.Second):
 				Ws.Ping()
 
 			}
