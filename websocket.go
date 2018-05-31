@@ -19,8 +19,9 @@ type WebSocket struct {
 }
 
 type Event struct {
-	Event string      `json:"event"`
-	Data  interface{} `json:"data"`
+	Event   string      `json:"event"`
+	Channel string      `json:"channel"`
+	Data    interface{} `json:"data"`
 }
 
 func (s *WebSocket) Close() {
