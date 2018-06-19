@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -16,51 +17,73 @@ import (
 
 var _cliId, _key, _secret string
 
-var _url string = "https://www.bitstamp.net/api/v2"
+var _url_v2 string = "https://www.bitstamp.net/api/v2"
+var _url_v1 string = "https://www.bitstamp.net/api"
+
+var httpClient = http.DefaultClient
 
 type ErrorResult struct {
-	Status string `json:"status,string"`
-	Reason string `json:"reason,string"`
-	Code   string `json:"code,string"`
+	Status string `json:"status"`
+	Reason string `json:"reason"`
+	Code   string `json:"code"`
 }
 
 type AccountBalanceResult struct {
-	UsdBalance   float64 `json:"usd_balance,string"`
-	BtcBalance   float64 `json:"btc_balance,string"`
-	EurBalance   float64 `json:"eur_balance,string"`
-	XrpBalance   float64 `json:"xrp_balance,string"`
-	LtcBalance   float64 `json:"ltc_balance,string"`
-	EthBalance   float64 `json:"eth_balance,string"`
-	BchBalance   float64 `json:"bch_balance,string"`
-	UsdReserved  float64 `json:"usd_reserved,string"`
-	BtcReserved  float64 `json:"btc_reserved,string"`
-	EurReserved  float64 `json:"eur_reserved,string"`
-	XrpReserved  float64 `json:"xrp_reserved,string"`
-	LtcReserved  float64 `json:"ltc_reserved,string"`
-	EthReserved  float64 `json:"eth_reserved,string"`
-	BchReserved  float64 `json:"bch_reserved,string"`
-	UsdAvailable float64 `json:"usd_available,string"`
-	BtcAvailable float64 `json:"btc_available,string"`
-	EurAvailable float64 `json:"eur_available,string"`
-	XrpAvailable float64 `json:"xrp_available,string"`
-	LtcAvailable float64 `json:"ltc_available,string"`
-	EthAvailable float64 `json:"eth_available,string"`
-	BchAvailable float64 `json:"bch_available,string"`
-	BtcUsdFee    float64 `json:"btcusd_fee,string"`
-	BtcEurFee    float64 `json:"btceur_fee,string"`
-	EurUsdFee    float64 `json:"eurusd_fee,string"`
-	XrpUsdFee    float64 `json:"xrpusd_fee,string"`
-	XrpEurFee    float64 `json:"xrpeur_fee,string"`
-	XrpBtcFee    float64 `json:"xrpbtc_fee,string"`
-	LtcUsdFee    float64 `json:"ltcusd_fee,string"`
-	LtcEurFee    float64 `json:"ltceur_fee,string"`
-	LtcBtcFee    float64 `json:"ltcbtc_fee,string"`
-	EthUsdFee    float64 `json:"ethusd_fee,string"`
-	EthEurFee    float64 `json:"etheur_fee,string"`
-	EthBtcFee    float64 `json:"ethbtc_fee,string"`
-	BchUsdFee    float64 `json:"bchusd_fee,string"`
-	BchEurFee    float64 `json:"bcheur_fee,string"`
-	BchBtcFee    float64 `json:"bchbtc_fee,string"`
+	Balance   map[string]float64
+	Reserved  map[string]float64
+	Available map[string]float64
+	Fee       map[string]float64
+}
+
+func SetHTTPClient(client *http.Client) {
+	httpClient = client
+}
+
+func NewAccountBalanceResult() *AccountBalanceResult {
+	return &AccountBalanceResult{
+		Balance:   make(map[string]float64, 0),
+		Available: make(map[string]float64, 0),
+		Reserved:  make(map[string]float64, 0),
+		Fee:       make(map[string]float64, 0)}
+}
+
+func (abr *AccountBalanceResult) UnmarshalJSON(data []byte) (err error) {
+	var strMap map[string]string
+	err = json.Unmarshal(data, &strMap)
+	if err != nil {
+		return
+	}
+
+	for key, value := range strMap {
+		split := strings.Split(key, "_")
+		if len(split) != 2 {
+			return fmt.Errorf("could not identify key '%s'", key)
+		}
+
+		floatValue, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return err
+		}
+
+		mapKey := split[0]
+		mapID := split[1]
+
+		switch mapID {
+		case "balance":
+			abr.Balance[mapKey] = floatValue
+		case "reserved":
+			abr.Reserved[mapKey] = floatValue
+		case "available":
+			abr.Available[mapKey] = floatValue
+		case "fee":
+			abr.Fee[mapKey] = floatValue
+		default:
+			return fmt.Errorf("Could not identify key postfix '%s'", mapID)
+		}
+
+	}
+
+	return nil
 }
 
 type TickerResult struct {
@@ -117,13 +140,30 @@ func SetAuth(clientId, key, secret string) {
 	_secret = secret
 }
 
-// privateQuery submits an http.Request with key, sig & nonce
+// privateQuery submits an http.Request with key, sig & nonce using the v2 api
 func privateQuery(path string, values url.Values, v interface{}) error {
 	// parse the bitstamp URL
-	endpoint, err := url.Parse(_url)
+	endpoint, err := url.Parse(_url_v2)
 	if err != nil {
 		return err
 	}
+
+	return privateQueryGeneric(endpoint, path, values, v)
+}
+
+// privateQuery submits an http.Request with key, sig & nonce using the v1 api
+func privateQueryOld(path string, values url.Values, v interface{}) error {
+	// parse the bitstamp URL
+	endpoint, err := url.Parse(_url_v1)
+	if err != nil {
+		return err
+	}
+
+	return privateQueryGeneric(endpoint, path, values, v)
+}
+
+func privateQueryGeneric(endpoint *url.URL, path string, values url.Values,
+	v interface{}) error {
 
 	// set the endpoint for this request
 	endpoint.Path += path
@@ -148,7 +188,7 @@ func privateQuery(path string, values url.Values, v interface{}) error {
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	// submit the http request
-	r, err := http.DefaultClient.Do(req)
+	r, err := httpClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -169,17 +209,14 @@ func privateQuery(path string, values url.Values, v interface{}) error {
 	if len(body) == 0 {
 		return fmt.Errorf("Response body 0 length")
 	}
-	e := make(map[string]interface{})
-	err = json.Unmarshal(body, &e)
-	if bsEr, ok := e["error"]; ok {
-		return fmt.Errorf("%v", bsEr)
-	}
 
 	// Check for status == error
-	err_result := ErrorResult{}
-	json.Unmarshal(body, &err_result)
-	if err_result.Status == "error" {
-		return fmt.Errorf("%#v", err_result)
+	var errResult map[string]interface{}
+	err = json.Unmarshal(body, &errResult)
+	if err == nil {
+		if status, ok := errResult["status"]; ok && status == "error" {
+			return fmt.Errorf("%+v", errResult)
+		}
 	}
 
 	//parse the JSON response into the response object
@@ -210,7 +247,7 @@ func (o *OrderBookItem) UnmarshalJSON(data []byte) error {
 }
 
 func AccountBalance() (*AccountBalanceResult, error) {
-	balance := &AccountBalanceResult{}
+	balance := NewAccountBalanceResult()
 	err := privateQuery("/balance/", url.Values{}, balance)
 	if err != nil {
 		return nil, err
@@ -307,6 +344,49 @@ func OpenOrders() (*[]OpenOrder, error) {
 	// make request
 	result := &[]OpenOrder{}
 	err := privateQuery("/open_orders/all/", url.Values{}, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func CancelAllOrders() (bool, error) {
+	// make request
+
+	var result bool
+	err := privateQueryOld("/cancel_all_orders/", url.Values{}, &result)
+	if err != nil {
+		return false, err
+	}
+	return result, nil
+}
+
+func WithdrawLitecoin(address string, amount float64) (interface{}, error) {
+	// make request
+
+	log.Printf("WithdrawLitecoin() is currently untested!")
+
+	var result map[string]interface{}
+
+	v := url.Values{}
+	v.Add("amount", strconv.FormatFloat(amount, 'f', 8, 64))
+	v.Add("address", address)
+
+	err := privateQuery("/ltc_withdrawal/", v, &result)
+
+	if status, ok := result["status"]; ok {
+		statusStr, ok := status.(string)
+		if !ok {
+			err = fmt.Errorf("Failed to deal with result '%+v'", result)
+			return nil, err
+		}
+
+		if statusStr == "error" {
+			err = fmt.Errorf("Got error: %+v", result)
+			return nil, err
+		}
+	}
+
 	if err != nil {
 		return nil, err
 	}
