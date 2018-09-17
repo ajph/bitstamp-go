@@ -111,6 +111,10 @@ type OpenOrder struct {
 	CurrencyPair string  `json:"currency_pair"`
 }
 
+func SetUrl(url string) {
+	_url = url
+}
+
 func SetAuth(clientId, key, secret string) {
 	_cliId = clientId
 	_key = key
