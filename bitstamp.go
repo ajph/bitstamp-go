@@ -7,12 +7,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 )
+
+var _debug bool = false
 
 var _cliId, _key, _secret string
 
@@ -111,10 +114,18 @@ type OpenOrder struct {
 	CurrencyPair string  `json:"currency_pair"`
 }
 
+func SetUrl(url string) {
+	_url = url
+}
+
 func SetAuth(clientId, key, secret string) {
 	_cliId = clientId
 	_key = key
 	_secret = secret
+}
+
+func SetDebug(debug bool) {
+	_debug = debug
 }
 
 // privateQuery submits an http.Request with key, sig & nonce
@@ -182,8 +193,10 @@ func privateQuery(path string, values url.Values, v interface{}) error {
 		return fmt.Errorf("%#v", err_result)
 	}
 
+	if _debug {
+		log.Println(string(body))
+	}
 	//parse the JSON response into the response object
-	//log.Println(string(body))
 	return json.Unmarshal(body, v)
 }
 
