@@ -183,7 +183,7 @@ func privateQuery(path string, values url.Values, v interface{}) error {
 	}
 
 	//parse the JSON response into the response object
-	//log.Println(string(body))
+	// log.Println(string(body))
 	return json.Unmarshal(body, v)
 }
 
@@ -311,4 +311,33 @@ func OpenOrders() (*[]OpenOrder, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+func AccountTransactions() ([]AccountTransactionResult, error) {
+	internalTs := make([]accountTransactionResult, 0)
+	err := privateQuery("/user_transactions/", url.Values{}, &internalTs)
+	if err != nil {
+		return nil, err
+	}
+
+	ts := make([]AccountTransactionResult, len(internalTs))
+	for i, t := range internalTs {
+		ts[i] = AccountTransactionResult{
+			DateTime: t.DateTime,
+			Id:       t.Id,
+			Type:     t.Type,
+			Usd:      float64(t.Usd),
+			Eur:      float64(t.Eur),
+			Btc:      float64(t.Btc),
+			Xrp:      float64(t.Xrp),
+			Ltc:      float64(t.Ltc),
+			Eth:      float64(t.Eth),
+			BtcUsd:   float64(t.BtcUsd),
+			UsdBtc:   float64(t.UsdBtc),
+			Fee:      float64(t.Fee),
+			OrderId:  t.OrderId,
+		}
+	}
+
+	return ts, nil
 }
