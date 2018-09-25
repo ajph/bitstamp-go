@@ -14,8 +14,6 @@ import (
 	"time"
 )
 
-var _cliId, _key, _secret string
-
 var _url string = "https://www.bitstamp.net/api/v2"
 
 type ErrorResult struct {
@@ -111,14 +109,23 @@ type OpenOrder struct {
 	CurrencyPair string  `json:"currency_pair"`
 }
 
-func SetAuth(clientId, key, secret string) {
-	_cliId = clientId
-	_key = key
-	_secret = secret
+// bitstamp holds credentials used to authorize private http calls
+type Bitstamp struct {
+	clientId string
+	key      string
+	secret   string
+}
+
+func NewBitstamp(clientId, key, secret string) *Bitstamp {
+	return &Bitstamp{
+		clientId: clientId,
+		key:      key,
+		secret:   secret,
+	}
 }
 
 // privateQuery submits an http.Request with key, sig & nonce
-func privateQuery(path string, values url.Values, v interface{}) error {
+func (b Bitstamp) privateQuery(path string, values url.Values, v interface{}) error {
 	// parse the bitstamp URL
 	endpoint, err := url.Parse(_url)
 	if err != nil {
@@ -130,9 +137,9 @@ func privateQuery(path string, values url.Values, v interface{}) error {
 
 	// add required key, signature & nonce to values
 	nonce := strconv.FormatInt(time.Now().UnixNano(), 10)
-	mac := hmac.New(sha256.New, []byte(_secret))
-	mac.Write([]byte(nonce + _cliId + _key))
-	values.Set("key", _key)
+	mac := hmac.New(sha256.New, []byte(b.secret))
+	mac.Write([]byte(nonce + b.clientId + b.key))
+	values.Set("key", b.key)
 	values.Set("signature", strings.ToUpper(hex.EncodeToString(mac.Sum(nil))))
 	values.Set("nonce", nonce)
 
@@ -209,34 +216,34 @@ func (o *OrderBookItem) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func AccountBalance() (*AccountBalanceResult, error) {
+func (b Bitstamp) AccountBalance() (*AccountBalanceResult, error) {
 	balance := &AccountBalanceResult{}
-	err := privateQuery("/balance/", url.Values{}, balance)
+	err := b.privateQuery("/balance/", url.Values{}, balance)
 	if err != nil {
 		return nil, err
 	}
 	return balance, nil
 }
 
-func OrderBook(pair string) (*OrderBookResult, error) {
+func (b Bitstamp) OrderBook(pair string) (*OrderBookResult, error) {
 	orderBook := &OrderBookResult{}
-	err := privateQuery("/order_book/"+pair+"/", url.Values{}, orderBook)
+	err := b.privateQuery("/order_book/"+pair+"/", url.Values{}, orderBook)
 	if err != nil {
 		return nil, err
 	}
 	return orderBook, nil
 }
 
-func Ticker(pair string) (*TickerResult, error) {
+func (b Bitstamp) Ticker(pair string) (*TickerResult, error) {
 	ticker := &TickerResult{}
-	err := privateQuery("/ticker/"+pair+"/", url.Values{}, ticker)
+	err := b.privateQuery("/ticker/"+pair+"/", url.Values{}, ticker)
 	if err != nil {
 		return nil, err
 	}
 	return ticker, nil
 }
 
-func BuyLimitOrder(pair string, amount float64, price float64, amountPrecision, pricePrecision int) (*BuyOrderResult, error) {
+func (b Bitstamp) BuyLimitOrder(pair string, amount float64, price float64, amountPrecision, pricePrecision int) (*BuyOrderResult, error) {
 	// set params
 	var v = url.Values{}
 	v.Add("amount", strconv.FormatFloat(amount, 'f', amountPrecision, 64))
@@ -244,28 +251,28 @@ func BuyLimitOrder(pair string, amount float64, price float64, amountPrecision, 
 
 	// make request
 	result := &BuyOrderResult{}
-	err := privateQuery("/buy/"+pair+"/", v, result)
+	err := b.privateQuery("/buy/"+pair+"/", v, result)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func BuyMarketOrder(pair string, amount float64) (*BuyOrderResult, error) {
+func (b Bitstamp) BuyMarketOrder(pair string, amount float64) (*BuyOrderResult, error) {
 	// set params
 	var v = url.Values{}
 	v.Add("amount", strconv.FormatFloat(amount, 'f', 8, 64))
 
 	// make request
 	result := &BuyOrderResult{}
-	err := privateQuery("/buy/market/"+pair+"/", v, result)
+	err := b.privateQuery("/buy/market/"+pair+"/", v, result)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func SellLimitOrder(pair string, amount float64, price float64, amountPrecision, pricePrecision int) (*SellOrderResult, error) {
+func (b Bitstamp) SellLimitOrder(pair string, amount float64, price float64, amountPrecision, pricePrecision int) (*SellOrderResult, error) {
 	// set params
 	var v = url.Values{}
 	v.Add("amount", strconv.FormatFloat(amount, 'f', amountPrecision, 64))
@@ -273,40 +280,40 @@ func SellLimitOrder(pair string, amount float64, price float64, amountPrecision,
 
 	// make request
 	result := &SellOrderResult{}
-	err := privateQuery("/sell/"+pair+"/", v, result)
+	err := b.privateQuery("/sell/"+pair+"/", v, result)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func SellMarketOrder(pair string, amount float64) (*SellOrderResult, error) {
+func (b Bitstamp) SellMarketOrder(pair string, amount float64) (*SellOrderResult, error) {
 	// set params
 	var v = url.Values{}
 	v.Add("amount", strconv.FormatFloat(amount, 'f', 8, 64))
 
 	// make request
 	result := &SellOrderResult{}
-	err := privateQuery("/sell/market/"+pair+"/", v, result)
+	err := b.privateQuery("/sell/market/"+pair+"/", v, result)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func CancelOrder(orderId int64) {
+func (b Bitstamp) CancelOrder(orderId int64) {
 	// set params
 	var v = url.Values{}
 	v.Add("id", strconv.FormatInt(orderId, 10))
 
 	// make request
-	privateQuery("/cancel_order/", v, nil)
+	b.privateQuery("/cancel_order/", v, nil)
 }
 
-func OpenOrders() (*[]OpenOrder, error) {
+func (b Bitstamp) OpenOrders() (*[]OpenOrder, error) {
 	// make request
 	result := &[]OpenOrder{}
-	err := privateQuery("/open_orders/all/", url.Values{}, result)
+	err := b.privateQuery("/open_orders/all/", url.Values{}, result)
 	if err != nil {
 		return nil, err
 	}
