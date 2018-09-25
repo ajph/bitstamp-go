@@ -102,6 +102,10 @@ type OrderBookItem struct {
 	Amount float64
 }
 
+type OrderStatusResult struct {
+	Status string `json:"status"`
+}
+
 type OpenOrder struct {
 	Id           int64   `json:"id,string"`
 	DateTime     string  `json:"datetime"`
@@ -307,6 +311,20 @@ func OpenOrders() (*[]OpenOrder, error) {
 	// make request
 	result := &[]OpenOrder{}
 	err := privateQuery("/open_orders/all/", url.Values{}, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func OrderStatus(orderId int64) (*OrderStatusResult, error) {
+	// set params
+	var v = url.Values{}
+	v.Add("id", strconv.FormatInt(orderId, 10))
+
+	// make request
+	result := &OrderStatusResult{}
+	err := privateQuery("/order_status/", v, result)
 	if err != nil {
 		return nil, err
 	}
