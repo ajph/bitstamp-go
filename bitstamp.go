@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -64,6 +65,28 @@ type AccountBalanceResult struct {
 	BchUsdFee    float64 `json:"bchusd_fee,string"`
 	BchEurFee    float64 `json:"bcheur_fee,string"`
 	BchBtcFee    float64 `json:"bchbtc_fee,string"`
+}
+
+type UserTransactionsResult struct {
+	Fee      float64 `json:"fee"`
+	Id       int64   `json:"id"`
+	OrderId  int64   `json:"order_id"`
+	Usd      float64 `json:"usd"`
+	Eur      float64 `json:"eur"`
+	Btc      float64 `json:"btc"`
+	Xrp      float64 `json:"xrp"`
+	Eth      float64 `json:"eth"`
+	Ltc      float64 `json:"ltc"`
+	BtcUsd   float64 `json:"btc_usd"`
+	BtcEur   float64 `json:"btc_eur"`
+	EthUsd   float64 `json:"eth_usd"`
+	EthEur   float64 `json:"eth_eur"`
+	XrpUsd   float64 `json:"xrp_usd"`
+	XrpEur   float64 `json:"xrp_eur"`
+	LtcUsd   float64 `json:"ltc_usd"`
+	LtcEur   float64 `json:"ltc_eur"`
+	DateTime string  `json:"datetime"`
+	Type     int     `json:"type,string"`
 }
 
 type TickerResult struct {
@@ -168,6 +191,10 @@ func privateQuery(path string, values url.Values, v interface{}) error {
 		return err
 	}
 
+	if r.StatusCode != http.StatusOK {
+		return fmt.Errorf("Didn't receive 200 OK")
+	}
+
 	// if no result interface, return
 	if v == nil {
 		return nil
@@ -226,6 +253,56 @@ func (o *OrderBookItem) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// bitstamp API is not consistant in its way of sending numeric values of the
+// same key, sometimes they're strings, sometimes ints, sometimes floats
+func (u *UserTransactionsResult) UnmarshalJSON(data []byte) error {
+	t := make(map[string]interface{}, 0)
+
+	err := json.Unmarshal(data, &t)
+	if err != nil {
+		return err
+	}
+
+	r := reflect.ValueOf(u)
+	// loop through Unmashalled k / v's returned from bitstamp and then
+	// loop through our fields to figure out what kind of type we want
+	for k, v := range t {
+		for i := 0; i < r.Elem().NumField(); i++ {
+			if tag, ok := r.Elem().Type().Field(i).Tag.Lookup("json"); ok {
+				// tag matches the key
+				if tag == k {
+					switch r.Elem().Field(i).Kind() {
+					// our struct wants a float
+					case reflect.Float64:
+						switch v.(type) {
+						// sent value is a float or an int, both match
+						case float64, int:
+							r.Elem().Field(i).SetFloat(v.(float64))
+						case string:
+							f, err := strconv.ParseFloat(v.(string), 64)
+							if err != nil {
+								return err
+							}
+							r.Elem().Field(i).SetFloat(f)
+						}
+					case reflect.Int:
+						r.Elem().Field(i).SetInt(v.(int64))
+					case reflect.String:
+						r.Elem().Field(i).SetString(v.(string))
+					}
+				}
+			}
+		}
+	}
+	// int,string will not match (type)
+	(*u).Type, err = strconv.Atoi(t["type"].(string))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func AccountBalance() (*AccountBalanceResult, error) {
 	balance := &AccountBalanceResult{}
 	err := privateQuery("/balance/", url.Values{}, balance)
@@ -233,6 +310,15 @@ func AccountBalance() (*AccountBalanceResult, error) {
 		return nil, err
 	}
 	return balance, nil
+}
+
+func UserTransactions() (*[]UserTransactionsResult, error) {
+	result := &[]UserTransactionsResult{}
+	err := privateQuery("/user_transactions/", url.Values{}, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func OrderBook(pair string) (*OrderBookResult, error) {
